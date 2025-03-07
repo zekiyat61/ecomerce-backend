@@ -10,6 +10,24 @@ import cartRouter from "./routes/cartRoute.js";
 const app = express();
 const PORT = 5023;
 
+// middlewares
+app.use(express.json());
+// app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:3001", ""],
+    methods: ["GET", "POST", "DELETE", "PUT"],
+    credentials: true,
+  })
+);
+
+app.get("/", (req, res) => {
+  res.send("API Working");
+});
+// api endpoints
+app.use("/api/user", userRouter);
+app.use("/api/product", productRouter);
+app.use("/api/cart", cartRouter);
 mongoose
   .connect(process.env.MONGODB_URL)
 
@@ -23,15 +41,3 @@ mongoose
   .catch((err) => {
     console.log(err);
   });
-
-// middlewares
-app.use(express.json());
-app.use(cors());
-
-app.get("/", (req, res) => {
-  res.send("API Working");
-});
-// api endpoints
-app.use("/api/user", userRouter);
-app.use("/api/product", productRouter);
-app.use("/api/cart", cartRouter);
