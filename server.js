@@ -8,7 +8,7 @@ import productRouter from "./routes/productRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 // App Config
 const app = express();
-const PORT = 5020;
+const PORT = 5023;
 
 mongoose
   .connect(process.env.MONGODB_URL)
@@ -28,10 +28,10 @@ mongoose
 app.use(express.json());
 app.use(cors());
 
+app.get("/", (req, res) => {
+  res.send("API Working");
+});
 // api endpoints
 app.use("/api/user", userRouter);
 app.use("/api/product", productRouter);
 app.use("/api/cart", cartRouter);
-app.get("/", (req, res) => {
-  res.send("API Working");
-});
