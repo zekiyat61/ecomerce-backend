@@ -18,8 +18,8 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://zekiyaecomerce.netlify.app",
       "https://zekiyatecommerce-admin.netlify.app",
+      "https://zekiyaecomerce.netlify.app",
     ],
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
