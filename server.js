@@ -8,7 +8,7 @@ import productRouter from "./routes/productRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 // App Config
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = 5020;
 
 mongoose
   .connect(process.env.MONGODB_URL)
