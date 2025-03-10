@@ -3,8 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import userModel from "../Models/userModel.js";
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET);
+const createToken = (id, expiresIn = process.env.JWT_EXPIRES_IN || "1h") => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn });
 };
 
 // Route for user login
@@ -15,20 +15,24 @@ const loginUser = async (req, res) => {
     const user = await userModel.findOne({ email });
 
     if (!user) {
-      return res.json({ success: false, message: "User doesn't exists" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User doesn't exist" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (isMatch) {
-      const token = createToken(user._id);
-      res.json({ success: true, token });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
     }
+
+    const token = createToken(user._id);
+    res.status(200).json({ success: true, token });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -37,30 +41,43 @@ const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // checking user already exists or not
+    // Check if user already exists
     const exists = await userModel.findOne({ email });
     if (exists) {
-      return res.json({ success: false, message: "User already exists" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists" });
     }
 
-    // validating email format & strong password
+    // Validate email format
     if (!validator.isEmail(email)) {
-      return res.json({
-        success: false,
-        message: "Please enter a valid email",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Please enter a valid email" });
     }
-    if (password.length < 8) {
-      return res.json({
+
+    // Validate password strength
+    if (
+      !validator.isStrongPassword(password, {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1,
+      })
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Please enter a strong password",
+        message:
+          "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one number, and one symbol",
       });
     }
 
-    // hashing user password
+    // Hash user password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create new user
     const newUser = new userModel({
       name,
       email,
@@ -68,13 +85,12 @@ const registerUser = async (req, res) => {
     });
 
     const user = await newUser.save();
-
     const token = createToken(user._id);
 
-    res.json({ success: true, token });
+    res.status(201).json({ success: true, token });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error("Registration error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -83,18 +99,24 @@ const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      const token = jwt.sign(email + password, process.env.JWT_SECRET);
-      res.json({ success: true, token });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
+    if (email === process.env.ADMIN_EMAIL) {
+      const isMatch = await bcrypt.compare(
+        password,
+        process.env.ADMIN_PASSWORD_HASH
+      );
+
+      if (isMatch) {
+        const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+          expiresIn: "1h",
+        });
+        return res.status(200).json({ success: true, token });
+      }
     }
+
+    res.status(401).json({ success: false, message: "Invalid credentials" });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error("Admin login error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
